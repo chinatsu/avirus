@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, BigEndian};
+use byteorder::{ByteOrder, BigEndian, LittleEndian};
 
 use avi::AVIIF_KEYFRAME;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Frame {
     pub id: u32,
     pub flag: u32,
@@ -11,13 +11,13 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(bytes: &[u8; 16]) -> Frame {
+    pub fn new(bytes: &[u8]) -> Frame {
         let mut iter = bytes.chunks(4);
         Frame {
             id: BigEndian::read_u32(iter.next().unwrap()),
-            flag: BigEndian::read_u32(iter.next().unwrap()),
-            offset: BigEndian::read_u32(iter.next().unwrap()),
-            length: BigEndian::read_u32(iter.next().unwrap()),
+            flag: LittleEndian::read_u32(iter.next().unwrap()),
+            offset: LittleEndian::read_u32(iter.next().unwrap()),
+            length: LittleEndian::read_u32(iter.next().unwrap()),
         }
     }
 
