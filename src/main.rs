@@ -5,8 +5,7 @@ mod avi;
 use avi::AVI;
 
 fn main() {
-    let file = AVI::new("sample.avi").unwrap();
-    for frame in file.frames.meta.iter() {
-        println!("Frame is videoframe: {}", &frame.is_videoframe());
-    }
+    let mut avi = AVI::new("sample.avi").unwrap();
+    let mut io = avi.frames.make_framedata();
+    let new_avi = avi.frames.overwrite(&mut io);
 }
