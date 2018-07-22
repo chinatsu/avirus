@@ -1,0 +1,8 @@
+[package]
+name = "avirus"
+version = "0.1.0"
+authors = ["kentd"]
+
+[dependencies]
+bytes = "0.4.8"
+byteorder = "1.2.3"
