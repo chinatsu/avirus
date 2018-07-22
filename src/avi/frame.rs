@@ -11,12 +11,13 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(bytes: [[u8; 4]; 4]) -> Frame {
+    pub fn new(bytes: [u8; 16]) -> Frame {
+        let mut iter = bytes.chunks(4);
         Frame {
-            id: BigEndian::read_u32(&bytes[0]),
-            flag: BigEndian::read_u32(&bytes[1]),
-            offset: BigEndian::read_u32(&bytes[2]),
-            length: BigEndian::read_u32(&bytes[3]),
+            id: BigEndian::read_u32(iter.next().unwrap()),
+            flag: BigEndian::read_u32(iter.next().unwrap()),
+            offset: BigEndian::read_u32(iter.next().unwrap()),
+            length: BigEndian::read_u32(iter.next().unwrap()),
         }
     }
 
