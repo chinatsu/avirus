@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, BigEndian};
 
 use avi::AVIIF_KEYFRAME;
 
-
+#[derive(Clone, Copy)]
 pub struct Frame {
     pub id: u32,
     pub flag: u32,
@@ -11,7 +11,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(bytes: [u8; 16]) -> Frame {
+    pub fn new(bytes: &[u8; 16]) -> Frame {
         let mut iter = bytes.chunks(4);
         Frame {
             id: BigEndian::read_u32(iter.next().unwrap()),
@@ -19,6 +19,12 @@ impl Frame {
             offset: BigEndian::read_u32(iter.next().unwrap()),
             length: BigEndian::read_u32(iter.next().unwrap()),
         }
+    }
+
+    pub fn as_bytes(&self) -> [u8; 16] {
+        let mut buf = [0u8; 16];
+        BigEndian::write_u32_into(&[self.id, self.flag, self.offset, self.length], &mut buf);
+        buf
     }
 
     pub fn is_videoframe(&self) -> bool {

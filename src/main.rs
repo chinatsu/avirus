@@ -1,13 +1,11 @@
+#![allow(dead_code)]
 extern crate byteorder;
+extern crate bytes;
 mod avi;
 
-use byteorder::{ByteOrder, BigEndian};
-use avi::frame::Frame;
+use avi::AVI;
 
 fn main() {
-    let frame = Frame::new(*b"00dc000000010002");
-    println!("Videoframe: {:?}", &frame.is_videoframe());
-    println!("Audioframe: {:?}", &frame.is_audioframe());
-    println!("I-frame: {:?}", &frame.is_iframe());
-    println!("P-frame: {:?}", &frame.is_pframe());
+    let mut file = AVI::new("sample.avi").unwrap();
+    println!("File is formatted: {:?}", &file.is_formatted());
 }
