@@ -1,8 +1,8 @@
 use avi::frame::Frame;
-use avi::read_n;
 use std::io::Read;
-use std::io::BufReader;
 use std::io::Cursor;
+use std::io::prelude::*;
+use std::io::SeekFrom;
 use std::io::Result as IoResult;
 use byteorder::{LittleEndian, BigEndian, ByteOrder};
 
@@ -14,45 +14,42 @@ pub struct Frames {
 }
 
 impl Frames {
-    pub fn new(file: Vec<u8>) -> Frames {
-        let mut f = &file[..];
-        let mut reader = BufReader::new(&mut f);
+    pub fn new(file: Vec<u8>) -> IoResult<Frames> {
+        let mut rdr = Cursor::new(&file);
 
-        let mut absolute_position = 0;
         let mut pos_of_movi: usize = 0;
         let pos_of_idx1: usize;
 
-        read_n(&mut reader, 12);
-        let mut list_or_junk = read_n(&mut reader, 4);
-        absolute_position += 16;
-        while list_or_junk == *b"LIST" || list_or_junk == *b"JUNK" {
-            let s = LittleEndian::read_u32(&mut read_n(&mut reader, 4));
-            absolute_position += 4;
-            if read_n(&mut reader, 4) == *b"movi" {
-                pos_of_movi = absolute_position as usize;
+        rdr.seek(SeekFrom::Start(12))?;
+        let mut buf = [0u8; 4];
+        rdr.read_exact(&mut buf)?;
+        while buf == *b"LIST" || buf == *b"JUNK" {
+            rdr.read_exact(&mut buf)?;
+            let s = LittleEndian::read_u32(&buf);
+            rdr.read_exact(&mut buf)?;
+            if buf == *b"movi" {
+                pos_of_movi = rdr.position() as usize - 4;
             }
-            absolute_position += 4;
-            read_n(&mut reader, s as u64 - 4);
-            absolute_position += s - 4;
-            list_or_junk = read_n(&mut reader, 4);
-            absolute_position += 4;
+            rdr.seek(SeekFrom::Current(s as i64 - 4))?;
+            rdr.read_exact(&mut buf)?;
         }
-        pos_of_idx1 = absolute_position as usize;
-        absolute_position += 4; // this one comes before the actual move, for convenience
-        let s = LittleEndian::read_u32(&read_n(&mut reader, 4)) + absolute_position;
+        pos_of_idx1 = rdr.position() as usize - 4;
+        rdr.read_exact(&mut buf)?;
+        let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
 
         let mut meta: Vec<Frame> = Vec::new();
-        while absolute_position < s {
-            meta.push(Frame::new(&read_n(&mut reader, 16)));
-            absolute_position += 16;
+        let mut framebuffer = [0u8; 16];
+        while rdr.position() < s.into() {
+            rdr.read_exact(&mut framebuffer)?;
+            meta.push(Frame::new(&framebuffer));
         }
 
-        Frames {
+        Ok(Frames {
             stream: file.to_vec(),
             pos_of_idx1: pos_of_idx1,
             pos_of_movi: pos_of_movi,
             meta: meta,
-        }
+        })
     }
 
     pub fn make_framedata(&mut self) -> IoResult<Vec<u8>> {

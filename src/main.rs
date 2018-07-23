@@ -6,16 +6,11 @@ use avi::AVI;
 use avi::frame::Frame;
 
 fn main() {
-    let mut avi = AVI::new("heaven.avi").unwrap();
+    let mut avi = AVI::new("sample.avi").unwrap();
     let mut new_meta: Vec<Frame> = Vec::new();
     for frame in &mut avi.frames.meta {
-        if frame.is_pframe() {
-            for _ in 0..15 {
-                new_meta.push(*frame);
-            }
-        }
-        else if frame.is_audioframe() {
-            for _ in 0..15 {
+        if frame.is_pframe() || frame.is_audioframe() {
+            for _ in 0..3 {
                 new_meta.push(*frame);
             }
         }
@@ -24,6 +19,6 @@ fn main() {
         }
     }
     avi.frames.meta = new_meta;
-    //avi.frames.remove_keyframes();
+    avi.frames.remove_keyframes();
     avi.output("sample_2.avi").unwrap();
 }

@@ -3,6 +3,7 @@ pub mod frames;
 
 use std::fs::File;
 use std::io::Result as IoResult;
+use std::io::{Error, ErrorKind};
 use std::io::Cursor;
 use std::io::SeekFrom;
 use std::io::prelude::*;
@@ -25,10 +26,8 @@ impl AVI {
         let mut f = File::open(filename)?;
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf)?;
-        if !is_formatted(&buf).unwrap() {
-            panic!("poorly formatted input :(");
-        }
-        let frames = Frames::new(buf);
+        is_formatted(&buf)?;
+        let frames = Frames::new(buf)?;
         Ok(AVI {
             frames: frames,
         })
@@ -44,17 +43,17 @@ impl AVI {
 
 }
 
-fn is_formatted(file: &Vec<u8>) -> IoResult<bool> {
+fn is_formatted(file: &Vec<u8>) -> IoResult<()> {
     let mut reader = Cursor::new(&file);
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     if buf != *b"RIFF" {
-        return Ok(false);
+        return Err(Error::new(ErrorKind::InvalidData, "Malformed AVI"));
     }
     reader.seek(SeekFrom::Current(4))?;
     reader.read_exact(&mut buf)?;
     if buf != *b"AVI " {
-        return Ok(false);
+        return Err(Error::new(ErrorKind::InvalidData, "Malformed AVI"));
     }
     reader.read_exact(&mut buf)?;
     while buf == *b"LIST" || buf == *b"JUNK" {
@@ -64,19 +63,7 @@ fn is_formatted(file: &Vec<u8>) -> IoResult<bool> {
         reader.read_exact(&mut buf)?;
     }
     if buf != *b"idx1" {
-        return Ok(false);
+        return Err(Error::new(ErrorKind::InvalidData, "Malformed AVI"));
     }
-    Ok(true)
-}
-
-fn read_n<R>(reader: &mut R, bytes_to_read: u64) -> Vec<u8>
-where
-    R: Read,
-{
-    let mut buf = vec![];
-    let mut chunk = reader.take(bytes_to_read);
-    // Do appropriate error handling for your situation
-    let n = chunk.read_to_end(&mut buf).expect("Didn't read enough");
-    assert_eq!(bytes_to_read as usize, n);
-    buf
+    Ok(())
 }
