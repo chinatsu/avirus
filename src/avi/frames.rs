@@ -2,7 +2,8 @@ use avi::frame::Frame;
 use avi::read_n;
 use std::io::Read;
 use std::io::BufReader;
-use byteorder::{LittleEndian, BigEndian, ByteOrder};
+use std::io::Cursor;
+use byteorder::{LittleEndian, BigEndian, ByteOrder, ReadBytesExt};
 
 pub struct Frames {
     pub stream: Vec<u8>,
@@ -15,9 +16,10 @@ impl Frames {
     pub fn new(file: &mut Vec<u8>) -> Frames {
         let mut f = &file[..];
         let mut reader = BufReader::new(&mut f);
+
         let mut absolute_position = 0;
-        let mut pos_of_movi = 0;
-        let mut pos_of_idx1 = 0;
+        let mut pos_of_movi: usize = 0;
+        let mut pos_of_idx1: usize;
 
         read_n(&mut reader, 12);
         let mut list_or_junk = read_n(&mut reader, 4);
@@ -52,14 +54,14 @@ impl Frames {
         }
     }
 
-    // this function is reeeaaally slow :(
     pub fn make_framedata(&mut self) -> Vec<u8> {
         let mut framedata: Vec<u8> = Vec::new();
+        framedata.reserve(self.stream.len());
+        let mut reader = Cursor::new(&self.stream);
         for frame in &mut self.meta {
-            let mut stream = &mut &self.stream[..];
-            let mut reader = BufReader::new(&mut stream);
-            read_n(&mut reader, self.pos_of_movi as u64 + frame.offset as u64 + 8);
-            let mut actual_frame = read_n(&mut reader, frame.length as u64);
+            reader.set_position(self.pos_of_movi as u64 + frame.offset as u64 + 8);
+            let mut actual_frame = vec![0u8; frame.length as usize];
+            reader.read_exact(&mut actual_frame);
             frame.offset = (self.pos_of_movi as u32 + frame.offset + frame.length) as u32 + 12;
             frame.length = actual_frame.len() as u32;
             let mut buf = [0u8; 4];
@@ -67,10 +69,11 @@ impl Frames {
             framedata.extend_from_slice(&mut buf);
             LittleEndian::write_u32_into(&[frame.length], &mut buf);
             framedata.extend_from_slice(&mut buf);
-            framedata.extend_from_slice(&mut actual_frame[..]);
+            framedata.extend_from_slice(&mut actual_frame);
             if frame.length % 2 == 1 {
                 framedata.push(0u8);
             }
+            print!("{}\r", framedata.len())
         }
         framedata
     }
