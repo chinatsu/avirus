@@ -3,7 +3,8 @@ pub mod frames;
 
 use std::fs::File;
 use std::io::Result as IoResult;
-use std::io::BufReader;
+use std::io::Cursor;
+use std::io::SeekFrom;
 use std::io::prelude::*;
 use std::io::Read;
 use byteorder::{ByteOrder, LittleEndian};
@@ -16,7 +17,6 @@ pub const AVIIF_NO_TIME: u32 = 0x00000100;
 pub const SAFE_FRAMES_COUNT: u64 = 150000;
 
 pub struct AVI {
-    file: Vec<u8>,
     pub frames: Frames,
 }
 
@@ -25,17 +25,18 @@ impl AVI {
         let mut f = File::open(filename)?;
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf)?;
-        if !is_formatted(&buf) {
+        if !is_formatted(&buf).unwrap() {
             panic!("poorly formatted input :(");
         }
-        let frames = Frames::new(&mut buf);
+        let frames = Frames::new(buf);
         Ok(AVI {
-            file: buf,
             frames: frames,
         })
     }
 
     pub fn output(&mut self, filename: &str) -> IoResult<()> {
+        let io = self.frames.make_framedata()?;
+        self.frames.overwrite(io);
         let mut f = File::create(filename)?;
         f.write(&self.frames.stream)?;
         Ok(())
@@ -43,26 +44,29 @@ impl AVI {
 
 }
 
-fn is_formatted(file: &Vec<u8>) -> bool {
-    let mut reader = BufReader::new(&file[..]);
-    if read_n(&mut reader, 4) != *b"RIFF" {
-        return false;
+fn is_formatted(file: &Vec<u8>) -> IoResult<bool> {
+    let mut reader = Cursor::new(&file);
+    let mut buf = [0u8; 4];
+    reader.read_exact(&mut buf)?;
+    if buf != *b"RIFF" {
+        return Ok(false);
     }
-    read_n(&mut reader, 4);
-    if read_n(&mut reader, 4) != *b"AVI " {
-        return false;
+    reader.seek(SeekFrom::Current(4))?;
+    reader.read_exact(&mut buf)?;
+    if buf != *b"AVI " {
+        return Ok(false);
     }
-    let mut list_or_junk = read_n(&mut reader, 4);
-    while list_or_junk == *b"LIST" || list_or_junk == *b"JUNK" {
-        let s = LittleEndian::read_u32(&read_n(&mut reader, 4)[..]);
-        read_n(&mut reader, s.into());
-        list_or_junk = read_n(&mut reader, 4);
-
+    reader.read_exact(&mut buf)?;
+    while buf == *b"LIST" || buf == *b"JUNK" {
+        reader.read_exact(&mut buf)?;
+        let s = LittleEndian::read_u32(&buf);
+        reader.seek(SeekFrom::Current(s.into()))?;
+        reader.read_exact(&mut buf)?;
     }
-    if list_or_junk != *b"idx1" {
-        return false;
+    if buf != *b"idx1" {
+        return Ok(false);
     }
-    true
+    Ok(true)
 }
 
 fn read_n<R>(reader: &mut R, bytes_to_read: u64) -> Vec<u8>

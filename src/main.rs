@@ -10,7 +10,12 @@ fn main() {
     let mut new_meta: Vec<Frame> = Vec::new();
     for frame in &mut avi.frames.meta {
         if frame.is_pframe() {
-            for i in 0..15 {
+            for _ in 0..15 {
+                new_meta.push(*frame);
+            }
+        }
+        else if frame.is_audioframe() {
+            for _ in 0..15 {
                 new_meta.push(*frame);
             }
         }
@@ -20,7 +25,5 @@ fn main() {
     }
     avi.frames.meta = new_meta;
     //avi.frames.remove_keyframes();
-    let mut io = avi.frames.make_framedata();
-    avi.frames.overwrite(&mut io);
     avi.output("sample_2.avi").unwrap();
 }

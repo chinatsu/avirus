@@ -3,7 +3,8 @@ use avi::read_n;
 use std::io::Read;
 use std::io::BufReader;
 use std::io::Cursor;
-use byteorder::{LittleEndian, BigEndian, ByteOrder, ReadBytesExt};
+use std::io::Result as IoResult;
+use byteorder::{LittleEndian, BigEndian, ByteOrder};
 
 pub struct Frames {
     pub stream: Vec<u8>,
@@ -13,13 +14,13 @@ pub struct Frames {
 }
 
 impl Frames {
-    pub fn new(file: &mut Vec<u8>) -> Frames {
+    pub fn new(file: Vec<u8>) -> Frames {
         let mut f = &file[..];
         let mut reader = BufReader::new(&mut f);
 
         let mut absolute_position = 0;
         let mut pos_of_movi: usize = 0;
-        let mut pos_of_idx1: usize;
+        let pos_of_idx1: usize;
 
         read_n(&mut reader, 12);
         let mut list_or_junk = read_n(&mut reader, 4);
@@ -54,17 +55,17 @@ impl Frames {
         }
     }
 
-    pub fn make_framedata(&mut self) -> Vec<u8> {
+    pub fn make_framedata(&mut self) -> IoResult<Vec<u8>> {
         let mut framedata: Vec<u8> = Vec::new();
         framedata.reserve(self.stream.len());
         let mut reader = Cursor::new(&self.stream);
+        let mut buf = [0u8; 4];
         for frame in &mut self.meta {
             reader.set_position(self.pos_of_movi as u64 + frame.offset as u64 + 8);
             let mut actual_frame = vec![0u8; frame.length as usize];
-            reader.read_exact(&mut actual_frame);
+            reader.read_exact(&mut actual_frame)?;
             frame.offset = (self.pos_of_movi as u32 + frame.offset + frame.length) as u32 + 12;
             frame.length = actual_frame.len() as u32;
-            let mut buf = [0u8; 4];
             BigEndian::write_u32_into(&[frame.id], &mut buf);
             framedata.extend_from_slice(&mut buf);
             LittleEndian::write_u32_into(&[frame.length], &mut buf);
@@ -73,9 +74,8 @@ impl Frames {
             if frame.length % 2 == 1 {
                 framedata.push(0u8);
             }
-            print!("{}\r", framedata.len())
         }
-        framedata
+        Ok(framedata)
     }
 
     pub fn remove_keyframes(&mut self) {
@@ -100,15 +100,13 @@ impl Frames {
         self.meta = data;
     }
 
-    pub fn overwrite(&mut self, framedata: &mut Vec<u8>) {
-        let mut stream = &mut &self.stream.clone()[..];
-        let mut reader = BufReader::new(&mut stream);
+    pub fn overwrite(&mut self, framedata: Vec<u8>) {
         let mut new_stream: Vec<u8> = Vec::new();
-        new_stream.extend_from_slice(&read_n(&mut reader, self.pos_of_movi as u64 - 4)[..]);
+        new_stream.extend_from_slice(&self.stream[..self.pos_of_movi as usize - 4]);
         let mut buf = [0u8; 4];
         LittleEndian::write_u32_into(&[4u32], &mut buf);
         new_stream.extend_from_slice(&mut buf);
-        new_stream.extend_from_slice(&mut framedata[..]);
+        new_stream.extend_from_slice(&framedata[..]);
         new_stream.extend_from_slice(b"idx1");
         LittleEndian::write_u32_into(&[self.meta.len() as u32], &mut buf);
         new_stream.extend_from_slice(&mut buf);
