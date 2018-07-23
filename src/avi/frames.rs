@@ -5,7 +5,7 @@ use std::io::BufReader;
 use byteorder::{LittleEndian, BigEndian, ByteOrder};
 
 pub struct Frames {
-    stream: Vec<u8>,
+    pub stream: Vec<u8>,
     pos_of_idx1: usize,
     pos_of_movi: usize,
     pub meta: Vec<Frame>,
@@ -52,6 +52,7 @@ impl Frames {
         }
     }
 
+    // this function is reeeaaally slow :(
     pub fn make_framedata(&mut self) -> Vec<u8> {
         let mut framedata: Vec<u8> = Vec::new();
         for frame in &mut self.meta {
@@ -74,8 +75,30 @@ impl Frames {
         framedata
     }
 
-    pub fn overwrite(&mut self, framedata: &mut Vec<u8>) -> Vec<u8> {
-        let mut stream = &mut &self.stream[..];
+    pub fn remove_keyframes(&mut self) {
+        let mut data: Vec<Frame> = Vec::new();
+        let mut lastpframe = self.meta[0];
+        for frame in self.meta.iter() {
+            if frame.is_iframe() {
+                lastpframe = frame.clone();
+                break;
+            }
+        }
+        for frame in self.meta.iter() {
+            if frame.is_audioframe() {
+                data.push(*frame);
+            } else if frame.is_pframe() {
+                data.push(*frame);
+                lastpframe = frame.clone();
+            } else if frame.is_iframe() {
+                data.push(lastpframe);
+            }
+        }
+        self.meta = data;
+    }
+
+    pub fn overwrite(&mut self, framedata: &mut Vec<u8>) {
+        let mut stream = &mut &self.stream.clone()[..];
         let mut reader = BufReader::new(&mut stream);
         let mut new_stream: Vec<u8> = Vec::new();
         new_stream.extend_from_slice(&read_n(&mut reader, self.pos_of_movi as u64 - 4)[..]);
@@ -95,9 +118,14 @@ impl Frames {
         }
         let eof = new_stream.len() as u32;
         LittleEndian::write_u32_into(&[eof - 8], &mut buf);
-        let mut u: Vec<u8> = new_stream.splice(4..7, buf.iter().cloned()).collect();
+        for i in 4..7 {
+            new_stream[i] = buf[i-4];
+        }
         LittleEndian::write_u32_into(&[framecount], &mut buf);
-        let v = u.splice(48..51, buf.iter().cloned()).collect();
-        v
+        for i in 48..51 {
+            new_stream[i] = buf[i-48];
+        }
+        self.stream = new_stream;
     }
+
 }
