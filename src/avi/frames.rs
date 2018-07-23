@@ -8,7 +8,6 @@ use byteorder::{LittleEndian, BigEndian, ByteOrder};
 
 pub struct Frames {
     pub stream: Vec<u8>,
-    pos_of_idx1: usize,
     pos_of_movi: usize,
     pub meta: Vec<Frame>,
 }
@@ -18,7 +17,6 @@ impl Frames {
         let mut rdr = Cursor::new(&file);
 
         let mut pos_of_movi: usize = 0;
-        let pos_of_idx1: usize;
 
         rdr.seek(SeekFrom::Start(12))?;
         let mut buf = [0u8; 4];
@@ -33,7 +31,6 @@ impl Frames {
             rdr.seek(SeekFrom::Current(s as i64 - 4))?;
             rdr.read_exact(&mut buf)?;
         }
-        pos_of_idx1 = rdr.position() as usize - 4;
         rdr.read_exact(&mut buf)?;
         let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
 
@@ -46,7 +43,6 @@ impl Frames {
 
         Ok(Frames {
             stream: file.to_vec(),
-            pos_of_idx1: pos_of_idx1,
             pos_of_movi: pos_of_movi,
             meta: meta,
         })

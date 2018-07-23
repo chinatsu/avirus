@@ -1,5 +1,5 @@
-#![allow(dead_code)]
 extern crate byteorder;
+
 mod avi;
 
 use avi::AVI;
@@ -10,7 +10,7 @@ fn main() {
     let mut new_meta: Vec<Frame> = Vec::new();
     for frame in &mut avi.frames.meta {
         if frame.is_pframe() || frame.is_audioframe() {
-            for _ in 0..3 {
+            for _ in 0..15 {
                 new_meta.push(*frame);
             }
         }
