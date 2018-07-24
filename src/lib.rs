@@ -1,3 +1,5 @@
+extern crate byteorder;
+
 pub mod frame;
 pub mod frames;
 
@@ -11,7 +13,6 @@ use std::io::Read;
 use byteorder::{ByteOrder, LittleEndian};
 use self::frames::Frames;
 
-pub const AVIIF_KEYFRAME: u32 = 0x00000010;
 
 pub struct AVI {
     pub frames: Frames,

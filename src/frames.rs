@@ -1,4 +1,4 @@
-use avi::frame::Frame;
+use frame::Frame;
 use std::io::Read;
 use std::io::Cursor;
 use std::io::prelude::*;

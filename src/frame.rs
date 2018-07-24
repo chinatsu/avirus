@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
 
-use avi::AVIIF_KEYFRAME;
+
+const AVIIF_KEYFRAME: u32 = 0x00000010;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Frame {
