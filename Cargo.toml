@@ -6,7 +6,7 @@ authors = ["kentd"]
 description = "A Rust library for manipulating AVI files for purposes such as glitch art."
 repository = "https://github.com/chinatsu/avirus/"
 readme = "README.md"
-keywords = ["multimedia::video"]
+keywords = ["multimedia", "video"]
 license = "MIT"
 license-file = "LICENSE"
 
