@@ -32,4 +32,5 @@ fn main() {
     }
     avi.frames.meta = new_meta;
     avi.output("sample_output.avi").unwrap();
-}```
+}
+```
