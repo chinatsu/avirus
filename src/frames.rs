@@ -72,11 +72,14 @@ impl Frames {
     }
 
     pub fn remove_keyframes(&mut self) {
+        // this function is subject for removal, as it's more of a
+        // fun helper function more than anything. people who wish to have more
+        // fine-grained control is likely to reimplement this with slight changes anyway.
         let mut data: Vec<Frame> = Vec::new();
-        let mut lastpframe = self.meta[0];
+        let mut lastpframe: Option<Frame> = None;
         for frame in self.meta.iter() {
             if frame.is_iframe() {
-                lastpframe = frame.clone();
+                lastpframe = Some(*frame);
                 break;
             }
         }
@@ -85,9 +88,14 @@ impl Frames {
                 data.push(*frame);
             } else if frame.is_pframe() {
                 data.push(*frame);
-                lastpframe = frame.clone();
+                lastpframe = Some(*frame);
             } else if frame.is_iframe() {
-                data.push(lastpframe);
+                // this clause is here to keep audio synced up to the video
+                // instead of dropping iframes, we replace them with the last
+                // found pframe.
+                if let Some(ref value) = lastpframe {
+                    data.push(*value);
+                }
             }
         }
         self.meta = data;
