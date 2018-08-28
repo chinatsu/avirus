@@ -4,10 +4,10 @@
 
 ```toml,ignore
 [dependencies]
-avirus = "0.2.1"
+avirus = "0.2.2"
 ```
 
-## Example usage
+## Examples
 
 `avirus::AVI` takes an existing AVI file and loads it into memory for manipulation. `avirus::frames` exposes a `meta` field, which holds simple structures with metadata about a frame. This field can be iterated over, and modified to create odd effects in the output file. When the AVI file's `output()` function is called, a new file will be rebuilt with the modified metadata.
 

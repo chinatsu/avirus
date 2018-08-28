@@ -6,13 +6,25 @@ use std::io::SeekFrom;
 use std::io::Result as IoResult;
 use byteorder::{LittleEndian, BigEndian, ByteOrder};
 
+/// The `Frames` type.
 pub struct Frames {
+    /// The byte stream, represented by a `Vec` of `u8`.
     pub stream: Vec<u8>,
+    /// A private field to keep track of the position of a particular header
     pos_of_movi: usize,
+    /// The frame list, represented by a `Vec` of [`Frame`](../frame/struct.Frame.html).
     pub meta: Vec<Frame>,
 }
 
 impl Frames {
+    /// Loads a byte stream and does further processing on it to populate
+    /// `Frames::meta`.
+    /// Normally, this function is called automatically upon calling `AVI::new`.
+    ///
+    /// # Errors
+    /// Two possible errors can be encountered in this function.
+    /// * errors raised by `io::Cursor::seek`, see [io::Seek::seek](https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek) for more information
+    /// * errors raised by `io::Cursor::read_exact`, see [io::Read::read_exact](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information
     pub fn new(file: Vec<u8>) -> IoResult<Frames> {
         let mut rdr = Cursor::new(&file);
 
@@ -48,6 +60,11 @@ impl Frames {
         })
     }
 
+    /// This method builds a byte stream based on `Frames::meta`.
+    /// This is normally called automatically on [`AVI::output`](../struct.AVI.html#method.output).
+    ///
+    /// # Errors
+    /// Errors can be encountered during reading bytes, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information.
     pub fn make_framedata(&mut self) -> IoResult<Vec<u8>> {
         let mut framedata: Vec<u8> = Vec::new();
         framedata.reserve(self.stream.len());
@@ -71,6 +88,19 @@ impl Frames {
         Ok(framedata)
     }
 
+    /// A helper method to remove all keyframes except the first in `Frames::meta`
+    /// It also attempts to sync audio and video by adding an additional pframe
+    /// for every iframe it removes. `Frames::meta` will be overwritten by this
+    /// method.
+    ///
+    /// # Examples
+    /// ```
+    /// use avirus::AVI;
+    /// use avirus::frame::Frame;
+    ///
+    /// let mut avi = AVI::new("path_to.avi").unwrap();
+    /// avi.frames.remove_keyframes();
+    /// ```
     pub fn remove_keyframes(&mut self) {
         // this function is subject for removal, as it's more of a
         // fun helper function more than anything. people who wish to have more
@@ -101,6 +131,9 @@ impl Frames {
         self.meta = data;
     }
 
+    /// A method which overwrites parts of `Frames::stream` with the input
+    /// `framedata`. This is normally called automatically in `AVI::output` and
+    /// uses the current state of `Frames`.
     pub fn overwrite(&mut self, framedata: Vec<u8>) {
         let mut new_stream: Vec<u8> = Vec::new();
         new_stream.extend_from_slice(&self.stream[..self.pos_of_movi as usize - 4]);
@@ -129,5 +162,4 @@ impl Frames {
         }
         self.stream = new_stream;
     }
-
 }
