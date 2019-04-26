@@ -38,7 +38,8 @@ impl Frame {
     /// This function outputs the `Frame` as a `[u8; 16]`.
     pub fn as_bytes(&self) -> [u8; 16] {
         let mut buf = [0u8; 16];
-        BigEndian::write_u32_into(&[self.id, self.flag, self.offset, self.length], &mut buf);
+        BigEndian::write_u32_into(&[self.id], &mut buf[..4]);
+        LittleEndian::write_u32_into(&[self.flag, self.offset, self.length], &mut buf[4..]);
         buf
     }
 

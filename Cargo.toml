@@ -1,14 +1,13 @@
 [package]
 name = "avirus"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["kentd"]
 
 description = "A Rust library for manipulating AVI files for purposes such as glitch art."
 repository = "https://github.com/chinatsu/avirus/"
 readme = "README.md"
 keywords = ["multimedia", "video"]
-license = "MIT"
 license-file = "LICENSE"
 
 [dependencies]
-byteorder = "1.2.3"
+byteorder = "1"
