@@ -3,16 +3,15 @@ extern crate byteorder;
 pub mod frame;
 pub mod frames;
 
-use std::fs::File;
-use std::io::Result as IoResult;
-use std::io::{Error, ErrorKind};
-use std::io::Cursor;
-use std::io::SeekFrom;
-use std::io::prelude::*;
-use std::io::Read;
-use byteorder::{ByteOrder, LittleEndian};
 use self::frames::Frames;
-
+use byteorder::{ByteOrder, LittleEndian};
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::Cursor;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::SeekFrom;
+use std::io::{Error, ErrorKind};
 
 /// The `AVI` type.
 pub struct AVI {
@@ -32,18 +31,16 @@ impl AVI {
     ///
     /// # Errors
     /// Several possible IO-related errors may be encountered in this function.
-    /// * if `filename` does not already exist, see [OpenOptions::open](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.open) for more details
-    /// * if a read error occurs during the reading of `filename`, see [io::Read::read](https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read) for more details
+    /// * if `filename` does not already exist, see [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.open) for more details
+    /// * if a read error occurs during the reading of `filename`, see [`io::Read::read`](https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read) for more details
     /// * if expected headers in the byte stream are not found, [`io::ErrorKind::InvalidData`](https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidData) will be encountered
-    pub fn new(filename: &str) -> IoResult<AVI> {
+    pub fn new(filename: &str) -> IoResult<Self> {
         let mut f = File::open(filename)?;
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf)?;
         is_formatted(&buf)?;
-        let frames = Frames::new(buf)?;
-        Ok(AVI {
-            frames: frames,
-        })
+        let frames = Frames::new(&buf)?;
+        Ok(Self { frames })
     }
 
     /// Constructs a binary AVI file from an AVI type.
@@ -58,17 +55,16 @@ impl AVI {
     ///
     /// # Errors
     /// Several possible IO-related errors may be encountered in this function.
-    /// * if a reading error is encountered during the creation of framedata, see [frames::Frames::make_framedata](frames/struct.Frames.html#method.make_framedata) for more details
-    /// * if an error is encountered during creation of the file, see [io::File::create](https://doc.rust-lang.org/std/fs/struct.File.html#method.create) for more details
-    /// * if an writing error is encountered during output, see [io::Write::write](https://doc.rust-lang.org/std/io/trait.Write.html#tymethod.write) for more details
+    /// * if a reading error is encountered during the creation of framedata, see [`frames::Frames::make_framedata`](frames/struct.Frames.html#method.make_framedata) for more details
+    /// * if an error is encountered during creation of the file, see [`io::File::create`](https://doc.rust-lang.org/std/fs/struct.File.html#method.create) for more details
+    /// * if an writing error is encountered during output, see [`io::Write::write`](https://doc.rust-lang.org/std/io/trait.Write.html#tymethod.write) for more details
     pub fn output(&mut self, filename: &str) -> IoResult<()> {
         let io = self.frames.make_framedata()?;
-        self.frames.overwrite(io);
+        self.frames.overwrite(&io);
         let mut f = File::create(filename)?;
-        f.write(&self.frames.stream)?;
+        f.write_all(&self.frames.stream)?;
         Ok(())
     }
-
 }
 
 /// Validates AVI formatting of an input binary file.
@@ -82,12 +78,24 @@ fn is_formatted(file: &Vec<u8>) -> IoResult<()> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     if buf != *b"RIFF" {
-        return Err(Error::new(ErrorKind::InvalidData, format!("Malformed AVI, missing RIFF at expected position 0x{:x}", reader.position())));
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!(
+                "Malformed AVI, missing RIFF at expected position 0x{:x}",
+                reader.position()
+            ),
+        ));
     }
     reader.seek(SeekFrom::Current(4))?;
     reader.read_exact(&mut buf)?;
     if buf != *b"AVI " {
-        return Err(Error::new(ErrorKind::InvalidData, format!("Malformed AVI, missing AVI at expected position 0x{:x}", reader.position())));
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!(
+                "Malformed AVI, missing AVI at expected position 0x{:x}",
+                reader.position()
+            ),
+        ));
     }
     reader.read_exact(&mut buf)?;
     while buf == *b"LIST" || buf == *b"JUNK" {
@@ -97,7 +105,13 @@ fn is_formatted(file: &Vec<u8>) -> IoResult<()> {
         reader.read_exact(&mut buf)?;
     }
     if buf != *b"idx1" {
-        return Err(Error::new(ErrorKind::InvalidData, format!("Malformed AVI, missing idx1 at expected position 0x{:x}", reader.position())));
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!(
+                "Malformed AVI, missing idx1 at expected position 0x{:x}",
+                reader.position()
+            ),
+        ));
     }
     Ok(())
 }
