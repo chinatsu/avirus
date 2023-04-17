@@ -1,6 +1,6 @@
 [package]
 name = "avirus"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["kentd"]
 
 description = "A Rust library for manipulating AVI files for purposes such as glitch art."
