@@ -12,6 +12,7 @@ use std::io::Read;
 use std::io::Result as IoResult;
 use std::io::SeekFrom;
 use std::io::{Error, ErrorKind};
+use std::path::Path;
 
 /// The `AVI` type.
 pub struct AVI {
@@ -34,8 +35,8 @@ impl AVI {
     /// * if `filename` does not already exist, see [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.open) for more details
     /// * if a read error occurs during the reading of `filename`, see [`io::Read::read`](https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read) for more details
     /// * if expected headers in the byte stream are not found, [`io::ErrorKind::InvalidData`](https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidData) will be encountered
-    pub fn new(filename: &str) -> IoResult<Self> {
-        let mut f = File::open(filename)?;
+    pub fn new<P: AsRef<Path>>(path: P) -> IoResult<Self> {
+        let mut f = File::open(path)?;
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf)?;
         is_formatted(&buf)?;
@@ -58,10 +59,10 @@ impl AVI {
     /// * if a reading error is encountered during the creation of framedata, see [`frames::Frames::make_framedata`](frames/struct.Frames.html#method.make_framedata) for more details
     /// * if an error is encountered during creation of the file, see [`io::File::create`](https://doc.rust-lang.org/std/fs/struct.File.html#method.create) for more details
     /// * if an writing error is encountered during output, see [`io::Write::write`](https://doc.rust-lang.org/std/io/trait.Write.html#tymethod.write) for more details
-    pub fn output(&mut self, filename: &str) -> IoResult<()> {
+    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> IoResult<()> {
         let io = self.frames.make_framedata()?;
         self.frames.overwrite(&io);
-        let mut f = File::create(filename)?;
+        let mut f = File::create(path)?;
         f.write_all(&self.frames.stream)?;
         Ok(())
     }
