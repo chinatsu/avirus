@@ -4,7 +4,7 @@
 
 ```toml,ignore
 [dependencies]
-avirus = "0.2.4"
+avirus = "0.2.5"
 ```
 
 ## Examples
